@@ -1,17 +1,17 @@
 <template>
-  <div class="research-list">
+  <div class="decision-list">
     <div class="header">
-      <h2>调研管理</h2>
+      <h2>决策管理</h2>
       <el-button type="primary" @click="showCreateDialog">
-        新建调研
+        新建决策
       </el-button>
     </div>
 
-    <el-table :data="researchList" v-loading="loading">
+    <el-table :data="decisionList" v-loading="loading">
       <el-table-column prop="title" label="标题" />
-      <el-table-column prop="research_type" label="类型">
+      <el-table-column prop="type" label="类型">
         <template #default="{ row }">
-          <el-tag>{{ getTypeLabel(row.research_type) }}</el-tag>
+          <el-tag>{{ getTypeLabel(row.type) }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="status" label="状态">
@@ -25,30 +25,30 @@
       <el-table-column label="操作" width="200">
         <template #default="{ row }">
           <el-button link @click="viewDetail(row)">查看</el-button>
-          <el-button link type="primary" @click="editResearch(row)">编辑</el-button>
-          <el-button link type="danger" @click="deleteResearch(row)">删除</el-button>
+          <el-button link type="primary" @click="editDecision(row)">编辑</el-button>
+          <el-button link type="danger" @click="deleteDecision(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
 
     <!-- 创建/编辑对话框 -->
     <el-dialog
-      :title="dialogType === 'create' ? '新建调研' : '编辑调研'"
+      :title="dialogType === 'create' ? '新建决策' : '编辑决策'"
       v-model="dialogVisible"
-      width="500px"
+      width="600px"
     >
       <el-form
         ref="formRef"
         :model="formData"
         :rules="rules"
-        label-width="80px"
+        label-width="100px"
       >
         <el-form-item label="标题" prop="title">
-          <el-input v-model="formData.title" placeholder="请输入调研标题" />
+          <el-input v-model="formData.title" placeholder="请输入决策标题" />
         </el-form-item>
         
-        <el-form-item label="类型" prop="research_type">
-          <el-select v-model="formData.research_type" placeholder="请选择调研类型">
+        <el-form-item label="类型" prop="type">
+          <el-select v-model="formData.type" placeholder="请选择决策类型">
             <el-option
               v-for="item in typeOptions"
               :key="item.value"
@@ -63,8 +63,26 @@
             v-model="formData.description"
             type="textarea"
             rows="4"
-            placeholder="请输入调研描述"
+            placeholder="请输入决策描述"
           />
+        </el-form-item>
+
+        <el-form-item label="决策选项">
+          <div v-for="(option, index) in formData.options" :key="index" class="option-item">
+            <el-input v-model="option.title" placeholder="选项标题" />
+            <el-input v-model="option.description" placeholder="选项描述" />
+            <el-button type="danger" @click="removeOption(index)">删除</el-button>
+          </div>
+          <el-button type="primary" @click="addOption">添加选项</el-button>
+        </el-form-item>
+
+        <el-form-item label="决策标准">
+          <div v-for="(criterion, index) in formData.criteria" :key="index" class="criterion-item">
+            <el-input v-model="criterion.name" placeholder="标准名称" />
+            <el-input-number v-model="criterion.weight" :min="1" :max="5" placeholder="权重" />
+            <el-button type="danger" @click="removeCriterion(index)">删除</el-button>
+          </div>
+          <el-button type="primary" @click="addCriterion">添加标准</el-button>
         </el-form-item>
       </el-form>
       
@@ -83,7 +101,6 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import type { FormInstance } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getResearchList, createResearch, updateResearch, deleteResearch } from '@/api/research'
 
 const router = useRouter()
 const loading = ref(false)
@@ -91,51 +108,80 @@ const submitting = ref(false)
 const dialogVisible = ref(false)
 const dialogType = ref<'create' | 'edit'>('create')
 const formRef = ref<FormInstance>()
-const researchList = ref([])
+const decisionList = ref([])
 
 const typeOptions = [
-  { value: 'market', label: '市场调研' },
-  { value: 'user', label: '用户调研' },
-  { value: 'competitor', label: '竞品分析' }
+  { value: 'product', label: '产品决策' },
+  { value: 'strategy', label: '战略决策' },
+  { value: 'investment', label: '投资决策' }
 ]
 
 const formData = reactive({
   title: '',
-  research_type: '',
+  type: '',
   description: '',
-  data_sources: []
+  options: [],
+  criteria: []
 })
 
 const rules = {
   title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
-  research_type: [{ required: true, message: '请选择类型', trigger: 'change' }],
+  type: [{ required: true, message: '请选择类型', trigger: 'change' }],
   description: [{ required: true, message: '请输入描述', trigger: 'blur' }]
 }
 
-// 获取列表数据
+// 获取决策列表
 const fetchList = async () => {
+  loading.value = true
   try {
-    loading.value = true
-    const res = await getResearchList()
-    researchList.value = res.data
+    // TODO: 调用后端API获取列表
+    decisionList.value = []
   } catch (error) {
-    console.error(error)
+    ElMessage.error('获取列表失败')
   } finally {
     loading.value = false
   }
 }
 
-onMounted(() => {
-  fetchList()
-})
-
 // 显示创建对话框
 const showCreateDialog = () => {
   dialogType.value = 'create'
+  Object.assign(formData, {
+    title: '',
+    type: '',
+    description: '',
+    options: [],
+    criteria: []
+  })
   dialogVisible.value = true
-  formData.title = ''
-  formData.research_type = ''
-  formData.description = ''
+}
+
+// 添加选项
+const addOption = () => {
+  formData.options.push({
+    title: '',
+    description: '',
+    pros: [],
+    cons: []
+  })
+}
+
+// 删除选项
+const removeOption = (index: number) => {
+  formData.options.splice(index, 1)
+}
+
+// 添加标准
+const addCriterion = () => {
+  formData.criteria.push({
+    name: '',
+    weight: 1
+  })
+}
+
+// 删除标准
+const removeCriterion = (index: number) => {
+  formData.criteria.splice(index, 1)
 }
 
 // 提交表单
@@ -147,10 +193,10 @@ const handleSubmit = async () => {
     submitting.value = true
     
     if (dialogType.value === 'create') {
-      await createResearch(formData)
+      // TODO: 调用创建API
       ElMessage.success('创建成功')
     } else {
-      await updateResearch(formData)
+      // TODO: 调用更新API
       ElMessage.success('更新成功')
     }
     
@@ -165,24 +211,24 @@ const handleSubmit = async () => {
 
 // 查看详情
 const viewDetail = (row: any) => {
-  router.push(`/research/${row._id}`)
+  router.push(`/decision/${row._id}`)
 }
 
 // 编辑
-const editResearch = (row: any) => {
+const editDecision = (row: any) => {
   dialogType.value = 'edit'
   Object.assign(formData, row)
   dialogVisible.value = true
 }
 
 // 删除
-const deleteResearch = async (row: any) => {
+const deleteDecision = async (row: any) => {
   try {
-    await ElMessageBox.confirm('确定要删除该调研吗？', '提示', {
+    await ElMessageBox.confirm('确定要删除该决策吗？', '提示', {
       type: 'warning'
     })
     
-    await deleteResearch(row._id)
+    // TODO: 调用删除API
     ElMessage.success('删除成功')
     fetchList()
   } catch (error) {
@@ -212,10 +258,16 @@ const getStatusType = (status: string) => {
   }
   return typeMap[status] || ''
 }
+
+onMounted(() => {
+  fetchList()
+})
 </script>
 
 <style scoped lang="scss">
-.research-container {
+.decision-list {
+  padding: 20px;
+  
   .header {
     display: flex;
     justify-content: space-between;
@@ -224,6 +276,17 @@ const getStatusType = (status: string) => {
     
     h2 {
       margin: 0;
+    }
+  }
+  
+  .option-item,
+  .criterion-item {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    
+    .el-input {
+      flex: 1;
     }
   }
 }

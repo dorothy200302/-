@@ -1,6 +1,6 @@
 <template>
   <el-container class="layout-container">
-    <el-aside width="200px">
+    <!-- <el-aside width="200px">
       <el-menu
         :router="true"
         :default-active="$route.path"
@@ -26,10 +26,10 @@
           <span>目标管理</span>
         </el-menu-item>
       </el-menu>
-    </el-aside>
+    </el-aside> -->
     
     <el-container>
-      <el-header>
+      <!-- <el-header>
         <div class="header-left">
           <el-icon class="collapse-btn" @click="toggleCollapse">
             <Fold v-if="!isCollapse" />
@@ -50,7 +50,7 @@
             </template>
           </el-dropdown>
         </div>
-      </el-header>
+      </el-header> -->
       
       <el-main>
         <router-view></router-view>
